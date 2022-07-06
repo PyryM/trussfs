@@ -1,0 +1,18 @@
+[package]
+name = "trussfs"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "trussfs"
+crate-type = ["cdylib"]
+
+[dependencies]
+slotmap = "1.0"
+log = "*"
+zip = "0.6.2"
+
+[dependencies.env_logger]
+version = "0.9.0"
+default-features = false
+features = ["atty", "humantime", "termcolor"]
