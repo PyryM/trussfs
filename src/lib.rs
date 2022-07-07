@@ -41,14 +41,49 @@ pub unsafe extern "C" fn trussfs_shutdown(ctx: *mut Context) {
 ///
 /// ctx must be valid
 #[no_mangle]
+pub unsafe extern "C" fn trussfs_archive_mount(ctx: *mut Context, path: *const c_char) -> u64 {
+    let ctx = &mut *ctx;
+    let path = c_str_to_string(path);
+    match ctx.mount_archive(path) {
+        Some(handle) => handle.into(),
+        None => INVALID_HANDLE,
+    }
+}
+
+/// # Safety
+///
+/// ctx must be valid
+#[no_mangle]
+pub unsafe extern "C" fn trussfs_archive_list(ctx: *mut Context, archive: u64) -> u64 {
+    let ctx = &mut *ctx;
+    match ctx.list_archive(archive.into()) {
+        Some(handle) => handle.into(),
+        None => INVALID_HANDLE,
+    }
+}
+
+/// # Safety
+///
+/// ctx must be valid
+#[no_mangle]
+pub unsafe extern "C" fn trussfs_archive_free(ctx: *mut Context, archive_handle: u64) {
+    let ctx = &mut *ctx;
+    ctx.archives.remove(archive_handle.into());
+}
+
+/// # Safety
+///
+/// ctx must be valid
+#[no_mangle]
 pub unsafe extern "C" fn trussfs_list_dir(
     ctx: *mut Context,
     path: *const c_char,
     files_only: bool,
+    include_metadata: bool,
 ) -> u64 {
     let ctx = &mut *ctx;
     let path = c_str_to_string(path);
-    match ctx.listdir(path, files_only) {
+    match ctx.listdir(path, files_only, include_metadata) {
         Some(handle) => handle.into(),
         None => INVALID_HANDLE,
     }
