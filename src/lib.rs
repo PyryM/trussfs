@@ -75,6 +75,94 @@ pub unsafe extern "C" fn trussfs_archive_free(ctx: *mut Context, archive_handle:
 ///
 /// ctx must be valid
 #[no_mangle]
+pub unsafe extern "C" fn trussfs_archive_filesize_name(
+    ctx: *mut Context,
+    archive_handle: u64,
+    name: *const c_char,
+) -> u64 {
+    let ctx = &mut *ctx;
+    let name = c_str_to_string(name);
+    match ctx.archives.get_mut(archive_handle.into()) {
+        Some(archive) => archive.filesize_by_name(name).unwrap_or_default(),
+        None => 0,
+    }
+}
+
+/// # Safety
+///
+/// ctx must be valid
+#[no_mangle]
+pub unsafe extern "C" fn trussfs_archive_filesize_index(
+    ctx: *mut Context,
+    archive_handle: u64,
+    index: u64,
+) -> u64 {
+    let ctx = &mut *ctx;
+    match ctx.archives.get_mut(archive_handle.into()) {
+        Some(archive) => archive
+            .filesize_by_index(index as usize)
+            .unwrap_or_default(),
+        None => 0,
+    }
+}
+
+unsafe fn copy_data(data: Vec<u8>, dest: *mut u8, dest_size: u64) -> i64 {
+    let ncopy = data.len();
+    if ncopy > dest_size as usize {
+        return -1;
+    }
+    ptr::copy_nonoverlapping(data.as_ptr(), dest, ncopy);
+    ncopy as i64
+}
+
+/// # Safety
+///
+/// ctx must be valid
+#[no_mangle]
+pub unsafe extern "C" fn trussfs_archive_read_name(
+    ctx: *mut Context,
+    archive_handle: u64,
+    name: *const c_char,
+    dest: *mut u8,
+    dest_size: u64,
+) -> i64 {
+    let ctx = &mut *ctx;
+    let archive = match ctx.archives.get_mut(archive_handle.into()) {
+        Some(archive) => archive,
+        None => return -1,
+    };
+    match archive.read_file_by_name(c_str_to_string(name)) {
+        Ok(data) => copy_data(data, dest, dest_size),
+        Err(_) => -1,
+    }
+}
+
+/// # Safety
+///
+/// ctx must be valid
+#[no_mangle]
+pub unsafe extern "C" fn trussfs_archive_read_index(
+    ctx: *mut Context,
+    archive_handle: u64,
+    index: u64,
+    dest: *mut u8,
+    dest_size: u64,
+) -> i64 {
+    let ctx = &mut *ctx;
+    let archive = match ctx.archives.get_mut(archive_handle.into()) {
+        Some(archive) => archive,
+        None => return -1,
+    };
+    match archive.read_file_by_index(index as usize) {
+        Ok(data) => copy_data(data, dest, dest_size),
+        Err(_) => -1,
+    }
+}
+
+/// # Safety
+///
+/// ctx must be valid
+#[no_mangle]
 pub unsafe extern "C" fn trussfs_list_dir(
     ctx: *mut Context,
     path: *const c_char,
