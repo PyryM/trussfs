@@ -1,6 +1,7 @@
 use crate::archive::Archive;
 use slotmap::{HopSlotMap, Key};
 use std::convert::From;
+use std::env::{current_dir, current_exe};
 use std::ffi::CString;
 use std::fs;
 
@@ -38,6 +39,8 @@ impl From<StringListKey> for u64 {
 
 pub struct Context {
     pub last_error: Option<CString>,
+    pub working_dir: Option<CString>,
+    pub binary_dir: Option<CString>,
     pub archives: HopSlotMap<ArchiveKey, Archive>,
     pub stringlists: HopSlotMap<StringListKey, StringList>,
 }
@@ -75,9 +78,28 @@ impl Context {
     pub fn new() -> Self {
         Context {
             last_error: None,
+            working_dir: None,
+            binary_dir: None,
             archives: HopSlotMap::with_key(),
             stringlists: HopSlotMap::with_key(),
         }
+    }
+
+    pub fn update_dirs(&mut self) {
+        self.working_dir = match current_dir() {
+            Ok(path) => {
+                let s = path.to_string_lossy().into_owned();
+                Some(CString::new(s).unwrap())
+            }
+            Err(_) => None,
+        };
+        self.binary_dir = match current_exe() {
+            Ok(path) => {
+                let s = path.to_string_lossy().into_owned();
+                Some(CString::new(s).unwrap())
+            }
+            Err(_) => None,
+        };
     }
 
     pub fn mount_archive_err(&mut self, path: String) -> Result<ArchiveKey, String> {

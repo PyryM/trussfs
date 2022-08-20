@@ -8,9 +8,18 @@ mod archive;
 mod context;
 
 const INVALID_HANDLE: u64 = u64::MAX;
+const VERSION_NUMBER: u64 = 2;
 
 fn c_str_to_string(s: *const c_char) -> String {
     unsafe { CStr::from_ptr(s).to_string_lossy().into_owned() }
+}
+
+#[no_mangle]
+pub extern "C" fn trussfs_version() -> u64 {
+    // It turns out having a constant null-terminated string in Rust
+    // is more complicated than necessary so the version is a simple
+    // number.
+    VERSION_NUMBER
 }
 
 #[no_mangle]
@@ -35,6 +44,32 @@ pub unsafe extern "C" fn trussfs_shutdown(ctx: *mut Context) {
     let b = Box::from_raw(ctx);
     drop(b);
     info!("Everything should be dead now!");
+}
+
+/// # Safety
+///
+/// ctx must be valid
+#[no_mangle]
+pub unsafe extern "C" fn trussfs_binary_dir(ctx: *mut Context) -> *const c_char {
+    let ctx = &mut *ctx;
+    ctx.update_dirs();
+    match &ctx.binary_dir {
+        Some(s) => s.as_ptr(),
+        None => ptr::null(),
+    }
+}
+
+/// # Safety
+///
+/// ctx must be valid
+#[no_mangle]
+pub unsafe extern "C" fn trussfs_working_dir(ctx: *mut Context) -> *const c_char {
+    let ctx = &mut *ctx;
+    ctx.update_dirs();
+    match &ctx.working_dir {
+        Some(s) => s.as_ptr(),
+        None => ptr::null(),
+    }
 }
 
 /// # Safety

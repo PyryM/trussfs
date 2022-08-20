@@ -3,8 +3,12 @@
 
 typedef struct trussfs_ctx trussfs_ctx;
 
+uint64_t trussfs_version();
 trussfs_ctx* trussfs_init();
 void trussfs_shutdown(trussfs_ctx* ctx);
+
+const char* trussfs_working_dir(trussfs_ctx* ctx);
+const char* trussfs_binary_dir(trussfs_ctx* ctx);
 
 uint64_t trussfs_archive_mount(trussfs_ctx* ctx, const char* path);
 void trussfs_archive_free(trussfs_ctx* ctx, uint64_t archive_handle);
