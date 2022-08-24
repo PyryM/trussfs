@@ -7,6 +7,8 @@ uint64_t trussfs_version();
 trussfs_ctx* trussfs_init();
 void trussfs_shutdown(trussfs_ctx* ctx);
 
+uint64_t trussfs_recursive_makedir(trussfs_ctx* ctx, const char* path);
+
 const char* trussfs_working_dir(trussfs_ctx* ctx);
 const char* trussfs_binary_dir(trussfs_ctx* ctx);
 
@@ -19,6 +21,8 @@ int64_t trussfs_archive_read_name(trussfs_ctx* ctx, uint64_t archive_handle, con
 int64_t trussfs_archive_read_index(trussfs_ctx* ctx, uint64_t archive_handle, uint64_t index, uint8_t* dest, uint64_t dest_size);
 
 uint64_t trussfs_list_dir(trussfs_ctx* ctx, const char* path, bool files_only, bool include_metadata);
+
+uint64_t trussfs_split_path(trussfs_ctx* ctx, const char* path);
 
 void trussfs_list_free(trussfs_ctx* ctx, uint64_t list_handle);
 uint64_t trussfs_list_length(trussfs_ctx* ctx, uint64_t list_handle);

@@ -4,6 +4,7 @@ use std::convert::From;
 use std::env::{current_dir, current_exe};
 use std::ffi::CString;
 use std::fs;
+use std::path::Path;
 
 pub type StringList = Vec<CString>;
 
@@ -154,6 +155,21 @@ impl Context {
                 None
             }
         }
+    }
+
+    pub fn splitpath(&mut self, path: String) -> Option<StringListKey> {
+        let path = Path::new(&path);
+        let mut parts: Vec<CString> = Vec::new();
+        for part in path.iter() {
+            let s = part.to_string_lossy().into_owned();
+            match CString::new(s) {
+                Ok(s) => {
+                    parts.push(s);
+                }
+                Err(_) => return None,
+            }
+        }
+        Some(self.stringlists.insert(parts))
     }
 }
 

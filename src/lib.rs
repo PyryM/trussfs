@@ -1,6 +1,7 @@
 use crate::context::Context;
 use log::{error, info, warn};
 use std::ffi::CStr;
+use std::fs;
 use std::os::raw::c_char;
 use std::ptr;
 
@@ -8,7 +9,7 @@ mod archive;
 mod context;
 
 const INVALID_HANDLE: u64 = u64::MAX;
-const VERSION_NUMBER: u64 = 2;
+const VERSION_NUMBER: u64 = 3;
 
 fn c_str_to_string(s: *const c_char) -> String {
     unsafe { CStr::from_ptr(s).to_string_lossy().into_owned() }
@@ -44,6 +45,18 @@ pub unsafe extern "C" fn trussfs_shutdown(ctx: *mut Context) {
     let b = Box::from_raw(ctx);
     drop(b);
     info!("Everything should be dead now!");
+}
+
+/// # Safety
+///
+/// ctx must be valid
+#[no_mangle]
+pub unsafe extern "C" fn trussfs_recursive_makedir(_ctx: *mut Context, path: *const c_char) -> u64 {
+    let path = c_str_to_string(path);
+    match fs::create_dir_all(path) {
+        Ok(_) => 1,
+        Err(_) => 0,
+    }
 }
 
 /// # Safety
@@ -207,6 +220,19 @@ pub unsafe extern "C" fn trussfs_list_dir(
     let ctx = &mut *ctx;
     let path = c_str_to_string(path);
     match ctx.listdir(path, files_only, include_metadata) {
+        Some(handle) => handle.into(),
+        None => INVALID_HANDLE,
+    }
+}
+
+/// # Safety
+///
+/// ctx must be valid
+#[no_mangle]
+pub unsafe extern "C" fn trussfs_split_path(ctx: *mut Context, path: *const c_char) -> u64 {
+    let ctx = &mut *ctx;
+    let path = c_str_to_string(path);
+    match ctx.splitpath(path) {
         Some(handle) => handle.into(),
         None => INVALID_HANDLE,
     }
