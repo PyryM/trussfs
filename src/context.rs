@@ -53,10 +53,11 @@ fn format_entry(
 ) -> Option<CString> {
     let path = entry.path();
     let metadata = fs::metadata(&path).ok()?;
+    let filename = entry.file_name();
     if files_only && !metadata.is_file() {
         return None;
     };
-    let s = path.to_string_lossy().to_string();
+    let s = filename.to_string_lossy().to_string();
     let s = if include_metadata {
         // TODO: consider more metadata?
         // E.g., whether it's a symlink, modified time
