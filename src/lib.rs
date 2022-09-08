@@ -1,6 +1,6 @@
 use crate::context::Context;
 use log::{error, info, warn};
-use std::ffi::CStr;
+use std::ffi::{CStr, CString};
 use std::fs;
 use std::os::raw::c_char;
 use std::ptr;
@@ -9,10 +9,14 @@ mod archive;
 mod context;
 
 const INVALID_HANDLE: u64 = u64::MAX;
-const VERSION_NUMBER: u64 = 4;
+const VERSION_NUMBER: u64 = 5;
 
 fn c_str_to_string(s: *const c_char) -> String {
     unsafe { CStr::from_ptr(s).to_string_lossy().into_owned() }
+}
+
+fn c_str_to_cstring(s: *const c_char) -> CString {
+    CString::new(c_str_to_string(s)).unwrap_or_default()
 }
 
 #[no_mangle]
@@ -242,6 +246,15 @@ pub unsafe extern "C" fn trussfs_split_path(ctx: *mut Context, path: *const c_ch
 ///
 /// ctx must be valid
 #[no_mangle]
+pub unsafe extern "C" fn trussfs_list_new(ctx: *mut Context) -> u64 {
+    let ctx = &mut *ctx;
+    ctx.stringlists.insert(Vec::new()).into()
+}
+
+/// # Safety
+///
+/// ctx must be valid
+#[no_mangle]
 pub unsafe extern "C" fn trussfs_list_free(ctx: *mut Context, list_handle: u64) {
     let ctx = &mut *ctx;
     ctx.stringlists.remove(list_handle.into());
@@ -300,4 +313,30 @@ pub unsafe extern "C" fn trussfs_list_get(
         Some(item) => item,
     };
     item.as_ptr()
+}
+
+/// # Safety
+///
+/// ctx must be valid
+#[no_mangle]
+pub unsafe extern "C" fn trussfs_list_push(
+    ctx: *mut Context,
+    list_handle: u64,
+    item: *const c_char,
+) -> u64 {
+    let ctx = &mut *ctx;
+    if list_handle == INVALID_HANDLE {
+        error!("Invalid list handle");
+        return 0;
+    };
+    match ctx.stringlists.get_mut(list_handle.into()) {
+        None => {
+            warn!("List {} does not exist.", list_handle);
+            0
+        }
+        Some(list) => {
+            list.push(c_str_to_cstring(item));
+            1
+        },
+    }
 }
