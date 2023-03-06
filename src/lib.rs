@@ -6,8 +6,8 @@ use std::os::raw::c_char;
 use std::ptr;
 
 mod archive;
-mod watcher;
 mod context;
+mod watcher;
 
 const INVALID_HANDLE: u64 = u64::MAX;
 const VERSION_NUMBER: u64 = 200; // 0.2.0
@@ -99,7 +99,11 @@ pub unsafe extern "C" fn trussfs_working_dir(ctx: *mut Context) -> *const c_char
 ///
 /// ctx must be valid
 #[no_mangle]
-pub unsafe extern "C" fn trussfs_watch_path(ctx: *mut Context, path: *const c_char, recursive: bool) -> u64 {
+pub unsafe extern "C" fn trussfs_watch_path(
+    ctx: *mut Context,
+    path: *const c_char,
+    recursive: bool,
+) -> u64 {
     let ctx = &mut *ctx;
     let path = c_str_to_string(path);
     match ctx.watch_path(path, recursive) {
@@ -365,6 +369,6 @@ pub unsafe extern "C" fn trussfs_list_push(
         Some(list) => {
             list.push(c_str_to_cstring(item));
             1
-        },
+        }
     }
 }

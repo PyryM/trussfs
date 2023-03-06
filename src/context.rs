@@ -60,7 +60,7 @@ pub struct Context {
     pub binary_dir: Option<CString>,
     pub archives: HopSlotMap<ArchiveKey, Archive>,
     pub stringlists: HopSlotMap<StringListKey, StringList>,
-    pub watchers: HopSlotMap<WatcherKey, FileWatcher>
+    pub watchers: HopSlotMap<WatcherKey, FileWatcher>,
 }
 
 fn format_entry(
