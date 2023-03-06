@@ -6,6 +6,7 @@ use std::os::raw::c_char;
 use std::ptr;
 
 mod archive;
+mod watcher;
 mod context;
 
 const INVALID_HANDLE: u64 = u64::MAX;
@@ -25,6 +26,11 @@ pub extern "C" fn trussfs_version() -> u64 {
     // is more complicated than necessary so the version is a simple
     // number.
     VERSION_NUMBER
+}
+
+#[no_mangle]
+pub extern "C" fn trussfs_is_handle_valid(handle: u64) -> bool {
+    handle != INVALID_HANDLE
 }
 
 #[no_mangle]
@@ -87,6 +93,28 @@ pub unsafe extern "C" fn trussfs_working_dir(ctx: *mut Context) -> *const c_char
         Some(s) => s.as_ptr(),
         None => ptr::null(),
     }
+}
+
+/// # Safety
+///
+/// ctx must be valid
+#[no_mangle]
+pub unsafe extern "C" fn trussfs_watch_path(ctx: *mut Context, path: *const c_char, recursive: bool) -> u64 {
+    let ctx = &mut *ctx;
+    let path = c_str_to_string(path);
+    match ctx.watch_path(path, recursive) {
+        Some(handle) => handle.into(),
+        None => INVALID_HANDLE,
+    }
+}
+
+/// # Safety
+///
+/// ctx must be valid
+#[no_mangle]
+pub unsafe extern "C" fn trussfs_unwatch(ctx: *mut Context, watcher_handle: u64) {
+    let ctx = &mut *ctx;
+    ctx.watchers.remove(watcher_handle.into());
 }
 
 /// # Safety
