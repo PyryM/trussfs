@@ -138,6 +138,16 @@ impl Context {
         }
     }
 
+    pub fn watcher_poll(&mut self, watcher: WatcherKey) -> Option<StringListKey> {
+        let watcher = self.watchers.get_mut(watcher)?;
+        let events = watcher.poll_events();
+        if events.is_empty() {
+            None
+        } else {
+            Some(self.stringlists.insert(events))
+        }
+    }
+
     pub fn mount_archive_err(&mut self, path: String) -> Result<ArchiveKey, String> {
         let archive = Archive::open(path)?;
         Ok(self.archives.insert(archive))

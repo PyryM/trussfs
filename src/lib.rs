@@ -125,6 +125,18 @@ pub unsafe extern "C" fn trussfs_unwatch(ctx: *mut Context, watcher_handle: u64)
 ///
 /// ctx must be valid
 #[no_mangle]
+pub unsafe extern "C" fn trussfs_watcher_poll(ctx: *mut Context, watcher: u64) -> u64 {
+    let ctx = &mut *ctx;
+    match ctx.watcher_poll(watcher.into()) {
+        Some(handle) => handle.into(),
+        None => INVALID_HANDLE,
+    }
+}
+
+/// # Safety
+///
+/// ctx must be valid
+#[no_mangle]
 pub unsafe extern "C" fn trussfs_archive_mount(ctx: *mut Context, path: *const c_char) -> u64 {
     let ctx = &mut *ctx;
     let path = c_str_to_string(path);
