@@ -1,4 +1,5 @@
 use crate::context::StringList;
+use log::info;
 use notify::{Config, Error, Event, RecommendedWatcher, RecursiveMode, Watcher};
 use std::ffi::CString;
 
@@ -9,10 +10,10 @@ pub struct FileWatcher {
 
 fn event_kind_to_string(kind: notify::EventKind) -> &'static str {
     match kind {
-        notify::EventKind::Create(_) => "create",
-        notify::EventKind::Access(_) => "access",
-        notify::EventKind::Modify(_) => "modify",
-        notify::EventKind::Remove(_) => "remove",
+        notify::EventKind::Create(_) => "ADD",
+        notify::EventKind::Access(_) => "ACC",
+        notify::EventKind::Modify(_) => "MOD",
+        notify::EventKind::Remove(_) => "REM",
         _ => "other",
     }
 }
@@ -44,6 +45,7 @@ impl FileWatcher {
             Config::default(),
         )
         .map_err(|e| e.to_string())?;
+        info!("Created watcher (kind: {:?})", RecommendedWatcher::kind());
 
         Ok(Self {
             inner: Box::new(watcher),
@@ -56,6 +58,7 @@ impl FileWatcher {
     }
 
     pub fn watch(&mut self, path: String, recursive: bool) -> Result<(), String> {
+        info!("Watching: {}", path);
         let mode = if recursive {
             RecursiveMode::Recursive
         } else {
