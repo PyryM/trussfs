@@ -61,6 +61,24 @@ pub unsafe extern "C" fn trussfs_shutdown(ctx: *mut Context) {
 ///
 /// ctx must be valid
 #[no_mangle]
+pub unsafe extern "C" fn trussfs_get_error(ctx: *mut Context) -> *const c_char {
+    let ctx = &mut *ctx;
+    ctx.last_error.as_ptr()
+}
+
+/// # Safety
+///
+/// ctx must be valid
+#[no_mangle]
+pub unsafe extern "C" fn trussfs_clear_error(ctx: *mut Context) {
+    let ctx = &mut *ctx;
+    ctx.clear_error();
+}
+
+/// # Safety
+///
+/// ctx must be valid
+#[no_mangle]
 pub unsafe extern "C" fn trussfs_recursive_makedir(_ctx: *mut Context, path: *const c_char) -> u64 {
     let path = c_str_to_string(path);
     match fs::create_dir_all(path) {
@@ -99,7 +117,7 @@ pub unsafe extern "C" fn trussfs_working_dir(ctx: *mut Context) -> *const c_char
 ///
 /// ctx must be valid
 #[no_mangle]
-pub unsafe extern "C" fn trussfs_watch_path(
+pub unsafe extern "C" fn trussfs_watcher_create(
     ctx: *mut Context,
     path: *const c_char,
     recursive: bool,
@@ -116,7 +134,23 @@ pub unsafe extern "C" fn trussfs_watch_path(
 ///
 /// ctx must be valid
 #[no_mangle]
-pub unsafe extern "C" fn trussfs_unwatch(ctx: *mut Context, watcher_handle: u64) {
+pub unsafe extern "C" fn trussfs_watcher_augment(
+    ctx: *mut Context,
+    watcher_handle: u64,
+    path: *const c_char,
+    recursive: bool,
+) -> bool {
+    let ctx = &mut *ctx;
+    let path = c_str_to_string(path);
+    ctx.watch_augment(watcher_handle.into(), path, recursive)
+        .is_ok()
+}
+
+/// # Safety
+///
+/// ctx must be valid
+#[no_mangle]
+pub unsafe extern "C" fn trussfs_watcher_free(ctx: *mut Context, watcher_handle: u64) {
     let ctx = &mut *ctx;
     ctx.watchers.remove(watcher_handle.into());
 }

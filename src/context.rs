@@ -55,7 +55,7 @@ impl From<StringListKey> for u64 {
 }
 
 pub struct Context {
-    pub last_error: Option<CString>,
+    pub last_error: CString,
     pub working_dir: Option<CString>,
     pub binary_dir: Option<CString>,
     pub archives: HopSlotMap<ArchiveKey, Archive>,
@@ -96,13 +96,17 @@ fn format_entry(
 impl Context {
     pub fn new() -> Self {
         Context {
-            last_error: None,
+            last_error: CString::new("").unwrap(),
             working_dir: None,
             binary_dir: None,
             archives: HopSlotMap::with_key(),
             stringlists: HopSlotMap::with_key(),
             watchers: HopSlotMap::with_key(),
         }
+    }
+
+    pub fn clear_error(&mut self) {
+        self.last_error = CString::new("").unwrap();
     }
 
     pub fn update_dirs(&mut self) {
@@ -132,10 +136,23 @@ impl Context {
         match self.watch_path_err(path, recursive) {
             Ok(watcher) => Some(watcher),
             Err(s) => {
-                self.last_error = Some(CString::new(s).unwrap());
+                self.last_error = CString::new(s).unwrap();
                 None
             }
         }
+    }
+
+    pub fn watch_augment(
+        &mut self,
+        watcher: WatcherKey,
+        path: String,
+        recursive: bool,
+    ) -> Result<(), String> {
+        match self.watchers.get_mut(watcher) {
+            Some(watcher) => watcher,
+            None => return Err(String::from("No such watcher")),
+        }
+        .watch(path, recursive)
     }
 
     pub fn watcher_poll(&mut self, watcher: WatcherKey) -> Option<StringListKey> {
@@ -157,7 +174,7 @@ impl Context {
         match self.mount_archive_err(path) {
             Ok(archive) => Some(archive),
             Err(s) => {
-                self.last_error = Some(CString::new(s).unwrap());
+                self.last_error = CString::new(s).unwrap();
                 None
             }
         }
@@ -196,7 +213,7 @@ impl Context {
         match self.listdir_err(path, files_only, include_metadata) {
             Ok(strlist) => Some(strlist),
             Err(s) => {
-                self.last_error = Some(CString::new(s).unwrap());
+                self.last_error = CString::new(s).unwrap();
                 None
             }
         }
