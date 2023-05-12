@@ -4,15 +4,26 @@
 typedef struct trussfs_ctx trussfs_ctx;
 typedef uint64_t listhandle_t;
 typedef uint64_t archivehandle_t;
+typedef uint64_t watcherhandle_t;
 
 uint64_t trussfs_version();
 trussfs_ctx* trussfs_init();
 void trussfs_shutdown(trussfs_ctx* ctx);
 
+const char* trussfs_get_error(trussfs_ctx* ctx);
+void trussfs_clear_error(trussfs_ctx* ctx);
+
 uint64_t trussfs_recursive_makedir(trussfs_ctx* ctx, const char* path);
 
 const char* trussfs_working_dir(trussfs_ctx* ctx);
 const char* trussfs_binary_dir(trussfs_ctx* ctx);
+
+bool trussfs_is_handle_valid(uint64_t handle);
+
+watcherhandle_t trussfs_watcher_create(trussfs_ctx* ctx, const char* path, bool recursive);
+bool trussfs_watcher_augment(trussfs_ctx* ctx, watcherhandle_t watcher, const char* path, bool recursive);
+void trussfs_watcher_free(trussfs_ctx* ctx, watcherhandle_t watcher);
+listhandle_t trussfs_watcher_poll(trussfs_ctx* ctx, watcherhandle_t watcher);
 
 archivehandle_t trussfs_archive_mount(trussfs_ctx* ctx, const char* path);
 void trussfs_archive_free(trussfs_ctx* ctx, archivehandle_t archive);

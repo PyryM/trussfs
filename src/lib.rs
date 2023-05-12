@@ -7,9 +7,10 @@ use std::ptr;
 
 mod archive;
 mod context;
+mod watcher;
 
 const INVALID_HANDLE: u64 = u64::MAX;
-const VERSION_NUMBER: u64 = 101; // 0.1.1
+const VERSION_NUMBER: u64 = 200; // 0.2.0
 
 fn c_str_to_string(s: *const c_char) -> String {
     unsafe { CStr::from_ptr(s).to_string_lossy().into_owned() }
@@ -25,6 +26,11 @@ pub extern "C" fn trussfs_version() -> u64 {
     // is more complicated than necessary so the version is a simple
     // number.
     VERSION_NUMBER
+}
+
+#[no_mangle]
+pub extern "C" fn trussfs_is_handle_valid(handle: u64) -> bool {
+    handle != INVALID_HANDLE
 }
 
 #[no_mangle]
@@ -49,6 +55,24 @@ pub unsafe extern "C" fn trussfs_shutdown(ctx: *mut Context) {
     let b = Box::from_raw(ctx);
     drop(b);
     info!("Everything should be dead now!");
+}
+
+/// # Safety
+///
+/// ctx must be valid
+#[no_mangle]
+pub unsafe extern "C" fn trussfs_get_error(ctx: *mut Context) -> *const c_char {
+    let ctx = &mut *ctx;
+    ctx.last_error.as_ptr()
+}
+
+/// # Safety
+///
+/// ctx must be valid
+#[no_mangle]
+pub unsafe extern "C" fn trussfs_clear_error(ctx: *mut Context) {
+    let ctx = &mut *ctx;
+    ctx.clear_error();
 }
 
 /// # Safety
@@ -86,6 +110,60 @@ pub unsafe extern "C" fn trussfs_working_dir(ctx: *mut Context) -> *const c_char
     match &ctx.working_dir {
         Some(s) => s.as_ptr(),
         None => ptr::null(),
+    }
+}
+
+/// # Safety
+///
+/// ctx must be valid
+#[no_mangle]
+pub unsafe extern "C" fn trussfs_watcher_create(
+    ctx: *mut Context,
+    path: *const c_char,
+    recursive: bool,
+) -> u64 {
+    let ctx = &mut *ctx;
+    let path = c_str_to_string(path);
+    match ctx.watch_path(path, recursive) {
+        Some(handle) => handle.into(),
+        None => INVALID_HANDLE,
+    }
+}
+
+/// # Safety
+///
+/// ctx must be valid
+#[no_mangle]
+pub unsafe extern "C" fn trussfs_watcher_augment(
+    ctx: *mut Context,
+    watcher_handle: u64,
+    path: *const c_char,
+    recursive: bool,
+) -> bool {
+    let ctx = &mut *ctx;
+    let path = c_str_to_string(path);
+    ctx.watch_augment(watcher_handle.into(), path, recursive)
+        .is_ok()
+}
+
+/// # Safety
+///
+/// ctx must be valid
+#[no_mangle]
+pub unsafe extern "C" fn trussfs_watcher_free(ctx: *mut Context, watcher_handle: u64) {
+    let ctx = &mut *ctx;
+    ctx.watchers.remove(watcher_handle.into());
+}
+
+/// # Safety
+///
+/// ctx must be valid
+#[no_mangle]
+pub unsafe extern "C" fn trussfs_watcher_poll(ctx: *mut Context, watcher: u64) -> u64 {
+    let ctx = &mut *ctx;
+    match ctx.watcher_poll(watcher.into()) {
+        Some(handle) => handle.into(),
+        None => INVALID_HANDLE,
     }
 }
 
@@ -337,6 +415,6 @@ pub unsafe extern "C" fn trussfs_list_push(
         Some(list) => {
             list.push(c_str_to_cstring(item));
             1
-        },
+        }
     }
 }

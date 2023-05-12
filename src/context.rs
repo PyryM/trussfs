@@ -1,4 +1,5 @@
 use crate::archive::Archive;
+use crate::watcher::FileWatcher;
 use slotmap::{HopSlotMap, Key};
 use std::convert::From;
 use std::env::{current_dir, current_exe};
@@ -15,6 +16,10 @@ slotmap::new_key_type! {
   pub struct StringListKey;
 }
 
+slotmap::new_key_type! {
+  pub struct WatcherKey;
+}
+
 // Eh, couldn't figure out how to make this generic
 impl From<u64> for ArchiveKey {
     fn from(item: u64) -> Self {
@@ -23,6 +28,17 @@ impl From<u64> for ArchiveKey {
 }
 impl From<ArchiveKey> for u64 {
     fn from(item: ArchiveKey) -> Self {
+        item.data().as_ffi()
+    }
+}
+
+impl From<u64> for WatcherKey {
+    fn from(item: u64) -> Self {
+        Self::from(slotmap::KeyData::from_ffi(item))
+    }
+}
+impl From<WatcherKey> for u64 {
+    fn from(item: WatcherKey) -> Self {
         item.data().as_ffi()
     }
 }
@@ -39,11 +55,12 @@ impl From<StringListKey> for u64 {
 }
 
 pub struct Context {
-    pub last_error: Option<CString>,
+    pub last_error: CString,
     pub working_dir: Option<CString>,
     pub binary_dir: Option<CString>,
     pub archives: HopSlotMap<ArchiveKey, Archive>,
     pub stringlists: HopSlotMap<StringListKey, StringList>,
+    pub watchers: HopSlotMap<WatcherKey, FileWatcher>,
 }
 
 fn format_entry(
@@ -79,12 +96,17 @@ fn format_entry(
 impl Context {
     pub fn new() -> Self {
         Context {
-            last_error: None,
+            last_error: CString::new("").unwrap(),
             working_dir: None,
             binary_dir: None,
             archives: HopSlotMap::with_key(),
             stringlists: HopSlotMap::with_key(),
+            watchers: HopSlotMap::with_key(),
         }
+    }
+
+    pub fn clear_error(&mut self) {
+        self.last_error = CString::new("").unwrap();
     }
 
     pub fn update_dirs(&mut self) {
@@ -104,6 +126,45 @@ impl Context {
         };
     }
 
+    pub fn watch_path_err(&mut self, path: String, recursive: bool) -> Result<WatcherKey, String> {
+        let mut watcher = FileWatcher::new()?;
+        watcher.watch(path, recursive)?;
+        Ok(self.watchers.insert(watcher))
+    }
+
+    pub fn watch_path(&mut self, path: String, recursive: bool) -> Option<WatcherKey> {
+        match self.watch_path_err(path, recursive) {
+            Ok(watcher) => Some(watcher),
+            Err(s) => {
+                self.last_error = CString::new(s).unwrap();
+                None
+            }
+        }
+    }
+
+    pub fn watch_augment(
+        &mut self,
+        watcher: WatcherKey,
+        path: String,
+        recursive: bool,
+    ) -> Result<(), String> {
+        match self.watchers.get_mut(watcher) {
+            Some(watcher) => watcher,
+            None => return Err(String::from("No such watcher")),
+        }
+        .watch(path, recursive)
+    }
+
+    pub fn watcher_poll(&mut self, watcher: WatcherKey) -> Option<StringListKey> {
+        let watcher = self.watchers.get_mut(watcher)?;
+        let events = watcher.poll_events();
+        if events.is_empty() {
+            None
+        } else {
+            Some(self.stringlists.insert(events))
+        }
+    }
+
     pub fn mount_archive_err(&mut self, path: String) -> Result<ArchiveKey, String> {
         let archive = Archive::open(path)?;
         Ok(self.archives.insert(archive))
@@ -113,7 +174,7 @@ impl Context {
         match self.mount_archive_err(path) {
             Ok(archive) => Some(archive),
             Err(s) => {
-                self.last_error = Some(CString::new(s).unwrap());
+                self.last_error = CString::new(s).unwrap();
                 None
             }
         }
@@ -152,7 +213,7 @@ impl Context {
         match self.listdir_err(path, files_only, include_metadata) {
             Ok(strlist) => Some(strlist),
             Err(s) => {
-                self.last_error = Some(CString::new(s).unwrap());
+                self.last_error = CString::new(s).unwrap();
                 None
             }
         }
