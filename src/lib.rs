@@ -117,6 +117,19 @@ pub unsafe extern "C" fn trussfs_working_dir(ctx: *mut Context) -> *const c_char
 ///
 /// ctx must be valid
 #[no_mangle]
+pub unsafe extern "C" fn trussfs_readline(ctx: *mut Context, prompt: *const c_char,) -> *const c_char {
+    let ctx = &mut *ctx;
+    let prompt = c_str_to_string(prompt);
+    match ctx.readline(&prompt) {
+        Some(s) => s.as_ptr(),
+        None => ptr::null(),
+    }
+}
+
+/// # Safety
+///
+/// ctx must be valid
+#[no_mangle]
 pub unsafe extern "C" fn trussfs_watcher_create(
     ctx: *mut Context,
     path: *const c_char,

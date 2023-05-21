@@ -8,6 +8,7 @@ use std::fs;
 use std::path::Path;
 
 pub type StringList = Vec<CString>;
+pub type Editor = rustyline::DefaultEditor;
 
 slotmap::new_key_type! {
   pub struct ArchiveKey;
@@ -61,6 +62,8 @@ pub struct Context {
     pub archives: HopSlotMap<ArchiveKey, Archive>,
     pub stringlists: HopSlotMap<StringListKey, StringList>,
     pub watchers: HopSlotMap<WatcherKey, FileWatcher>,
+    pub editor: Option<Editor>,
+    pub last_line: CString,
 }
 
 fn format_entry(
@@ -69,7 +72,7 @@ fn format_entry(
     include_metadata: bool,
 ) -> Option<CString> {
     let path = entry.path();
-    let metadata = fs::metadata(&path).ok()?;
+    let metadata = fs::metadata(path).ok()?;
     let filename = entry.file_name();
     if files_only && !metadata.is_file() {
         return None;
@@ -96,31 +99,33 @@ fn format_entry(
 impl Context {
     pub fn new() -> Self {
         Context {
-            last_error: CString::new("").unwrap(),
+            last_error: CString::default(),
             working_dir: None,
             binary_dir: None,
             archives: HopSlotMap::with_key(),
             stringlists: HopSlotMap::with_key(),
             watchers: HopSlotMap::with_key(),
+            editor: None,
+            last_line: CString::default(),
         }
     }
 
     pub fn clear_error(&mut self) {
-        self.last_error = CString::new("").unwrap();
+        self.last_error = CString::default();
     }
 
     pub fn update_dirs(&mut self) {
         self.working_dir = match current_dir() {
             Ok(path) => {
                 let s = path.to_string_lossy().into_owned();
-                Some(CString::new(s).unwrap())
+                Some(CString::new(s).unwrap_or_default())
             }
             Err(_) => None,
         };
         self.binary_dir = match current_exe() {
             Ok(path) => {
                 let s = path.to_string_lossy().into_owned();
-                Some(CString::new(s).unwrap())
+                Some(CString::new(s).unwrap_or_default())
             }
             Err(_) => None,
         };
@@ -232,6 +237,29 @@ impl Context {
             }
         }
         Some(self.stringlists.insert(parts))
+    }
+
+    fn _readline(&mut self, prompt: &str) -> Result<String, String> {
+        let ed = match &mut self.editor {
+            Some(ed) => ed,
+            None => {
+                self.editor.insert(rustyline::DefaultEditor::new().map_err(|e| e.to_string())?)
+            }
+        };
+        ed.readline(prompt).map_err(|e| e.to_string())
+    }
+
+    pub fn readline(&mut self, prompt: &str) -> Option<&CString> {
+        match self._readline(prompt) {
+            Ok(res) => {
+                self.last_line = CString::new(res).unwrap_or_default();
+                Some(&self.last_line)
+            },
+            Err(err) => {
+                self.last_error = CString::new(err).unwrap_or_default();
+                None
+            }
+        }
     }
 }
 

@@ -1,6 +1,6 @@
 [package]
 name = "trussfs"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 
 [lib]
@@ -12,6 +12,7 @@ slotmap = "1.0"
 log = "*"
 zip = "0.6.2"
 notify = "5.1.0"
+rustyline = "11.0.0"
 
 [dependencies.env_logger]
 version = "0.9.0"

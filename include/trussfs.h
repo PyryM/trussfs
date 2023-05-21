@@ -18,6 +18,8 @@ uint64_t trussfs_recursive_makedir(trussfs_ctx* ctx, const char* path);
 const char* trussfs_working_dir(trussfs_ctx* ctx);
 const char* trussfs_binary_dir(trussfs_ctx* ctx);
 
+const char* trussfs_readline(trussfs_ctx* ctx, const char* prompt);
+
 bool trussfs_is_handle_valid(uint64_t handle);
 
 watcherhandle_t trussfs_watcher_create(trussfs_ctx* ctx, const char* path, bool recursive);
