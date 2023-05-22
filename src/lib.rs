@@ -10,7 +10,7 @@ mod context;
 mod watcher;
 
 const INVALID_HANDLE: u64 = u64::MAX;
-const VERSION_NUMBER: u64 = 200; // 0.2.0
+const VERSION_NUMBER: u64 = 300; // 0.3.0
 
 fn c_str_to_string(s: *const c_char) -> String {
     unsafe { CStr::from_ptr(s).to_string_lossy().into_owned() }
