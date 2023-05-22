@@ -246,7 +246,13 @@ impl Context {
                 self.editor.insert(rustyline::DefaultEditor::new().map_err(|e| e.to_string())?)
             }
         };
-        ed.readline(prompt).map_err(|e| e.to_string())
+        match ed.readline(prompt) {
+            Ok(res) => {
+                ed.add_history_entry(res.clone()).unwrap_or_default();
+                Ok(res)
+            },
+            Err(e) => Err(e.to_string())
+        }
     }
 
     pub fn readline(&mut self, prompt: &str) -> Option<&CString> {
