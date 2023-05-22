@@ -242,16 +242,16 @@ impl Context {
     fn _readline(&mut self, prompt: &str) -> Result<String, String> {
         let ed = match &mut self.editor {
             Some(ed) => ed,
-            None => {
-                self.editor.insert(rustyline::DefaultEditor::new().map_err(|e| e.to_string())?)
-            }
+            None => self
+                .editor
+                .insert(rustyline::DefaultEditor::new().map_err(|e| e.to_string())?),
         };
         match ed.readline(prompt) {
             Ok(res) => {
                 ed.add_history_entry(res.clone()).unwrap_or_default();
                 Ok(res)
-            },
-            Err(e) => Err(e.to_string())
+            }
+            Err(e) => Err(e.to_string()),
         }
     }
 
@@ -260,7 +260,7 @@ impl Context {
             Ok(res) => {
                 self.last_line = CString::new(res).unwrap_or_default();
                 Some(&self.last_line)
-            },
+            }
             Err(err) => {
                 self.last_error = CString::new(err).unwrap_or_default();
                 None
